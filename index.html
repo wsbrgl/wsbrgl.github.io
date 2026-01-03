@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Word 博客 - 搜索增强版</title>
+    <title>Word 博客 - 个人多用户版</title>
     <style>
         :root {
             --word-blue: #2b579a;
@@ -26,14 +26,43 @@
             color: var(--text-dark); 
         }
 
-        /* 侧边栏 */
+        #authOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3f5f7; z-index: 2000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .auth-card {
+            background: white; padding: 40px; border-radius: 2px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px;
+            border-top: 5px solid var(--word-blue);
+        }
+        .auth-card h2 { color: var(--word-blue); margin: 0 0 20px 0; text-align: center; }
+        .auth-input { 
+            width: 100%; padding: 10px; margin-bottom: 15px; 
+            border: 1px solid var(--border-color); outline: none;
+        }
+        .auth-btn { 
+            width: 100%; padding: 10px; background: var(--word-blue); 
+            color: white; border: none; cursor: pointer; font-weight: bold;
+        }
+        .auth-btn:hover { background: #1e3e6d; }
+        .auth-toggle { 
+            margin-top: 15px; text-align: center; font-size: 13px; 
+            color: var(--text-light); cursor: pointer; text-decoration: underline;
+        }
+
         .sidebar { 
             width: 260px; background: #fff; border-right: 1px solid var(--border-color); 
-            padding: 20px 12px; flex-shrink: 0; display: flex; flex-direction: column; 
-            box-shadow: 2px 0 5px rgba(0,0,0,0.02);
-            z-index: 10;
+            padding: 15px 12px; flex-shrink: 0; display: flex; flex-direction: column; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.02); z-index: 10;
         }
         
+        .user-status {
+            padding: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+        }
+        .logout-btn { color: var(--danger-red); cursor: pointer; font-weight: bold; }
+
         .search-container { margin-bottom: 15px; position: relative; }
         .search-input {
             width: 100%; padding: 8px 12px; border: 1px solid var(--border-color);
@@ -59,7 +88,7 @@
         .cat-item { 
             padding: 10px 12px; font-size: 13px; cursor: pointer; display: flex; 
             justify-content: space-between; border-radius: 6px; align-items: center; margin-bottom: 4px; 
-            position: relative; group;
+            position: relative;
         }
         .cat-item:hover { background: #f5f5f5; }
         .cat-item.active { background: var(--active-bg); color: var(--word-blue); font-weight: bold; }
@@ -67,7 +96,6 @@
         .cat-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 5px; }
         .cat-count { background: #eee; font-size: 10px; padding: 2px 6px; border-radius: 10px; color: #666; font-weight: normal; margin-left: 5px; }
         
-        /* 删除分类按钮 */
         .del-cat-icon { 
             display: none; color: #ccc; font-size: 14px; padding: 0 5px; 
             transition: 0.2s; margin-left: 5px;
@@ -79,7 +107,6 @@
         .btn-backup { background: #f5f5f5; border: 1px solid #ddd; padding: 6px; font-size: 12px; cursor: pointer; border-radius: 4px; color: #666; }
         .btn-backup:hover { background: #eee; color: var(--word-blue); }
 
-        /* 内容区 */
         .main-content { 
             flex: 1; 
             overflow-y: auto; 
@@ -97,8 +124,12 @@
             margin-bottom: 20px;
         }
 
-        .format-btn { padding: 3px 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 3px; font-size: 12px; font-weight: bold; }
+        .format-btn { padding: 3px 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 3px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         .format-btn:hover { background: #f0f0f0; border-color: var(--word-blue); }
+
+        .toolbar select { padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; outline: none; }
+        .color-picker-container { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-light); }
+        .color-picker-container input[type="color"] { width: 20px; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
 
         .btn-delete {
             margin-left: auto; 
@@ -141,7 +172,6 @@
 
         .article-content-input { line-height: 1.8; font-size: 16px; outline: none; min-height: 600px; width: 100%; }
         
-        /* 图片交互 */
         .article-content-input img { 
             max-width: 100% !important; height: auto !important; display: block; margin: 10px auto; 
             cursor: zoom-in; transition: transform 0.2s;
@@ -159,7 +189,7 @@
         .save-indicator.active { color: var(--word-blue); font-weight: bold; }
 
         @media print {
-            .sidebar, .toolbar, .save-indicator, #listView, .image-modal { display: none !important; }
+            .sidebar, .toolbar, .save-indicator, #listView, .image-modal, #authOverlay { display: none !important; }
             body, .main-content { background: #fff; height: auto; overflow: visible; display: block; }
             .paper { box-shadow: none; border: none; width: 100%; padding: 0; margin: 0; min-height: auto; }
         }
@@ -167,11 +197,25 @@
 </head>
 <body>
 
+    <div id="authOverlay">
+        <div class="auth-card">
+            <h2 id="authTitle">Word 博客登录</h2>
+            <input type="text" id="username" class="auth-input" placeholder="用户名">
+            <input type="password" id="password" class="auth-input" placeholder="密码">
+            <button class="auth-btn" onclick="UserManager.handleAuth()" id="authBtn">登录</button>
+            <div class="auth-toggle" onclick="UserManager.toggleMode()" id="authToggle">没有账号？点击注册</div>
+        </div>
+    </div>
+
     <div id="imageModal" class="image-modal" onclick="App.closeImageModal()">
         <img id="modalImg" src="">
     </div>
 
     <aside class="sidebar">
+        <div class="user-status">
+            <span>你好, <strong id="displayUser">用户</strong></span>
+            <span class="logout-btn" onclick="UserManager.logout()">[退出]</span>
+        </div>
         <div class="search-container">
             <input type="text" id="searchInput" class="search-input" placeholder="搜索博文标题..." oninput="App.handleSearch()">
         </div>
@@ -194,12 +238,35 @@
             <button onclick="App.exportToDoc()" class="format-btn" style="color: var(--word-blue)">📄 导出 Doc</button>
             <button onclick="App.printPost()" class="format-btn" style="color: var(--danger-red)">🖨 打印文章</button>
 
-            <div id="editControls" class="hidden" style="display:flex; align-items:center; gap:12px; border-left:1px solid #ddd; padding-left:12px;">
-                <button class="format-btn" onclick="App.formatText('bold')">B</button>
-                <button class="format-btn" onclick="App.formatText('italic')" style="font-style: italic;">I</button>
-                <button class="format-btn" onclick="App.formatText('underline')" style="text-decoration: underline;">U</button>
+            <div id="editControls" class="hidden" style="display:flex; align-items:center; gap:8px; border-left:1px solid #ddd; padding-left:12px;">
+                <button class="format-btn" onclick="App.formatText('bold')" title="加粗">B</button>
+                <button class="format-btn" onclick="App.formatText('italic')" style="font-style: italic;" title="斜体">I</button>
+                <button class="format-btn" onclick="App.formatText('underline')" style="text-decoration: underline;" title="下划线">U</button>
+                <button class="format-btn" onclick="App.formatText('removeFormat')" title="清除格式" style="color:var(--danger-red)">Tx</button>
+
+                <select id="fontSizeSelect" onchange="App.formatText('fontSize', this.value)" title="字号">
+                    <option value="3">字号</option>
+                    <option value="1">最小</option>
+                    <option value="2">较小</option>
+                    <option value="3">正常</option>
+                    <option value="4">较大</option>
+                    <option value="5">大号</option>
+                    <option value="6">超大</option>
+                    <option value="7">极高</option>
+                </select>
+
+                <div class="color-picker-container" title="文字颜色">
+                    <span>A</span>
+                    <input type="color" onchange="App.formatText('foreColor', this.value)">
+                </div>
+
+                <div class="color-picker-container" title="背景颜色">
+                    <span style="background:#ffff00">H</span>
+                    <input type="color" value="#ffff00" onchange="App.formatText('hiliteColor', this.value)">
+                </div>
+
                 <div class="edit-tool-item">
-                    分类: <select id="catSelect" onchange="App.triggerAutoSave()"></select>
+                    <select id="catSelect" onchange="App.triggerAutoSave()"></select>
                 </div>
                 <button onclick="App.saveManual()" style="background:var(--word-blue); color:white; border:none; padding:4px 10px; cursor:pointer; border-radius:3px;">💾 保存</button>
             </div>
@@ -224,17 +291,73 @@
     </main>
 
     <script>
+        const UserManager = {
+            mode: 'login',
+            usersKey: 'word_blog_users_db',
+            sessionKey: 'word_blog_active_user',
+            toggleMode() {
+                this.mode = (this.mode === 'login' ? 'register' : 'login');
+                document.getElementById('authTitle').innerText = this.mode === 'login' ? 'Word 博客登录' : '新用户注册';
+                document.getElementById('authBtn').innerText = this.mode === 'login' ? '登录' : '注册并登录';
+                document.getElementById('authToggle').innerText = this.mode === 'login' ? '没有账号？点击注册' : '已有账号？点击登录';
+            },
+            handleAuth() {
+                const user = document.getElementById('username').value.trim();
+                const pass = document.getElementById('password').value.trim();
+                if(!user || !pass) return alert("请输入完整信息");
+                let users = JSON.parse(localStorage.getItem(this.usersKey)) || {};
+                if(this.mode === 'register') {
+                    if(users[user]) return alert("用户已存在");
+                    users[user] = pass;
+                    localStorage.setItem(this.usersKey, JSON.stringify(users));
+                    alert("注册成功，请登录");
+                    this.toggleMode();
+                } else {
+                    if(users[user] && users[user] === pass) {
+                        sessionStorage.setItem(this.sessionKey, user);
+                        location.reload();
+                    } else { alert("用户名或密码错误"); }
+                }
+            },
+            logout() { sessionStorage.removeItem(this.sessionKey); location.reload(); },
+            getActiveUser() { return sessionStorage.getItem(this.sessionKey); }
+        };
+
         const App = {
-            data: JSON.parse(localStorage.getItem('word_blog_v5')) || [],
-            cats: JSON.parse(localStorage.getItem('word_blog_cats_v5')) || ["技术笔记", "生活感悟", "工作周报"],
+            currentUser: UserManager.getActiveUser(),
+            data: [],
+            cats: [],
             state: { activeCat: "全部博文", viewingId: null, searchQuery: "", autoSaveTimer: null },
 
+            // 工具：格式化时间为 YYYY/MM/DD HH:mm
+            getMinuteTime(dateObj = new Date()) {
+                const date = dateObj.toLocaleDateString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '/');
+                const time = dateObj.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+                return `${date} ${time}`;
+            },
+
             init() { 
+                if(!this.currentUser) {
+                    document.getElementById('authOverlay').classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('authOverlay').classList.add('hidden');
+                document.getElementById('displayUser').innerText = this.currentUser;
+                const dataKey = `word_blog_data_${this.currentUser}`;
+                const catKey = `word_blog_cats_${this.currentUser}`;
+                this.data = JSON.parse(localStorage.getItem(dataKey)) || [];
+                this.cats = JSON.parse(localStorage.getItem(catKey)) || ["技术笔记", "生活感悟", "工作周报"];
                 this.refreshUI(); 
                 document.getElementById('contentField').addEventListener('click', (e) => {
                     const isEditing = document.getElementById('titleField').contentEditable === "true";
                     if (!isEditing && e.target.tagName === 'IMG') this.showImageModal(e.target.src);
                 });
+            },
+
+            saveToDisk() {
+                if(!this.currentUser) return;
+                localStorage.setItem(`word_blog_data_${this.currentUser}`, JSON.stringify(this.data));
+                localStorage.setItem(`word_blog_cats_${this.currentUser}`, JSON.stringify(this.cats));
             },
 
             showImageModal(src) {
@@ -252,7 +375,9 @@
                 this.state.autoSaveTimer = setTimeout(() => {
                     this.saveCore();
                     if (msg) {
-                        msg.innerText = "已自动保存 " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const now = new Date();
+                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                        msg.innerText = "已自动保存 " + timeStr;
                         msg.classList.remove('active');
                     }
                 }, 800);
@@ -266,7 +391,7 @@
                 p.content = document.getElementById('contentField').innerHTML;
                 const catSel = document.getElementById('catSelect');
                 if (catSel && catSel.value) p.cat = catSel.value;
-                localStorage.setItem('word_blog_v5', JSON.stringify(this.data));
+                this.saveToDisk();
                 this.refreshSidebar();
             },
 
@@ -292,7 +417,7 @@
             exportData() {
                 const blob = new Blob([JSON.stringify({ data: this.data, cats: this.cats }, null, 2)], { type: 'application/json' });
                 const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob); a.download = `blog_backup.json`; a.click();
+                a.href = URL.createObjectURL(blob); a.download = `${this.currentUser}_blog_backup.json`; a.click();
             },
 
             importData(event) {
@@ -300,8 +425,7 @@
                 reader.onload = (e) => {
                     const imported = JSON.parse(e.target.result);
                     this.data = imported.data; this.cats = imported.cats;
-                    localStorage.setItem('word_blog_v5', JSON.stringify(this.data));
-                    localStorage.setItem('word_blog_cats_v5', JSON.stringify(this.cats));
+                    this.saveToDisk();
                     this.refreshUI(); alert("恢复成功");
                 };
                 reader.readAsText(event.target.files[0]);
@@ -325,16 +449,12 @@
             createCatNode(name, count, isStatic) {
                 const li = document.createElement('li');
                 li.className = `cat-item ${this.state.activeCat === name ? 'active' : ''}`;
-                
-                // 点击切换分类，但要排除删除图标的点击
                 li.onclick = (e) => {
                     if(e.target.classList.contains('del-cat-icon')) return;
                     this.state.activeCat = name; 
                     this.goHome(); 
                 };
-
                 const delBtn = isStatic ? '' : `<span class="del-cat-icon" title="删除分类" onclick="App.deleteCategory('${name}')">✕</span>`;
-                
                 li.innerHTML = `
                     <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
                         <span>${isStatic ? '📄' : '📁'}</span>
@@ -347,25 +467,14 @@
                 return li;
             },
 
-            // 删除分类功能
             deleteCategory(catName) {
-                if(confirm(`确定要删除分类“${catName}”吗？\n删除后该分类下的文章将被归类为“技术笔记”（默认）。`)) {
-                    // 1. 从分类数组中移除
+                if(confirm(`确定要删除分类“${catName}”吗？`)) {
                     this.cats = this.cats.filter(c => c !== catName);
-                    // 2. 更新属于该分类的文章到默认分类
-                    const defaultCat = this.cats[0] || "技术笔记";
+                    const defaultCat = this.cats[0] || "未分类";
                     if(!this.cats.includes(defaultCat)) this.cats.unshift(defaultCat);
-                    
-                    this.data.forEach(p => {
-                        if(p.cat === catName) p.cat = defaultCat;
-                    });
-
-                    // 3. 如果当前正在查看该分类，跳转回全部博文
+                    this.data.forEach(p => { if(p.cat === catName) p.cat = defaultCat; });
                     if(this.state.activeCat === catName) this.state.activeCat = "全部博文";
-
-                    // 4. 保存并刷新
-                    localStorage.setItem('word_blog_cats_v5', JSON.stringify(this.cats));
-                    localStorage.setItem('word_blog_v5', JSON.stringify(this.data));
+                    this.saveToDisk();
                     this.refreshUI();
                 }
             },
@@ -376,13 +485,11 @@
                     (this.state.activeCat === "全部博文" || p.cat === this.state.activeCat) && 
                     p.title.toLowerCase().includes(this.state.searchQuery)
                 );
-                
                 document.getElementById('listBody').innerHTML = filtered.map(p => `
                     <div class="post-entry" onclick="App.viewPost(${p.id})">
                         <span class="post-title">${p.title}</span>
                         <div class="post-meta">[${p.cat}] ${p.date}</div>
                     </div>`).join('') || '<div style="padding:100px; text-align:center; color:#ccc;">暂无博文</div>';
-                
                 document.getElementById('currentCatTitle').innerText = this.state.activeCat;
                 document.getElementById('catStats').innerText = `共 ${filtered.length} 篇`;
             },
@@ -405,18 +512,22 @@
                 ['titleField', 'contentField'].forEach(f => document.getElementById(f).contentEditable = !isEd);
                 document.getElementById('editControls').classList.toggle('hidden');
                 document.getElementById('editBtn').innerText = !isEd ? "退出编辑" : "🖋 编辑内容";
-                const imgs = document.querySelectorAll('#contentField img');
-                imgs.forEach(img => img.style.cursor = !isEd ? 'default' : 'zoom-in');
             },
 
             saveManual() { this.saveCore(); this.toggleEdit(); this.refreshUI(); },
 
             createPost() {
-                const n = { id: Date.now(), title: "未命名博文", content: "请在此输入内容...", cat: this.cats[0], date: new Date().toLocaleString() };
-                this.data.unshift(n); this.refreshUI(); this.viewPost(n.id);
+                const n = { 
+                    id: Date.now(), 
+                    title: "未命名博文", 
+                    content: "请在此输入内容...", 
+                    cat: this.cats[0], 
+                    date: this.getMinuteTime() 
+                };
+                this.data.unshift(n); this.saveToDisk(); this.refreshUI(); this.viewPost(n.id);
             },
 
-            deletePost() { if(confirm("确定删除？")) { this.data = this.data.filter(p => p.id !== this.state.viewingId); this.goHome(); } },
+            deletePost() { if(confirm("确定删除？")) { this.data = this.data.filter(p => p.id !== this.state.viewingId); this.saveToDisk(); this.goHome(); } },
 
             goHome() {
                 document.getElementById('listView').classList.remove('hidden');
@@ -431,12 +542,13 @@
                     const trimmed = n.trim();
                     if(!this.cats.includes(trimmed)) {
                         this.cats.push(trimmed); 
-                        localStorage.setItem('word_blog_cats_v5', JSON.stringify(this.cats)); 
+                        this.saveToDisk();
                         this.refreshUI(); 
                     }
                 }
             }
         };
+
         App.init();
     </script>
 </body>
