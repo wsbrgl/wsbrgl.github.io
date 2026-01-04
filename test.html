@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Word 博客 - 个人多用户版</title>
+    <style>
+        :root {
+            --word-blue: #2b579a;
+            --page-bg: #f3f5f7;
+            --active-bg: #e2eaf4;
+            --border-color: #d1d1d1;
+            --text-dark: #333;
+            --text-light: #666;
+            --danger-red: #d93025;
+        }
+
+        /* 原有样式保持不变... */
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { background-color: var(--page-bg); margin: 0; font-family: "Microsoft YaHei", sans-serif; display: flex; height: 100vh; overflow: hidden; color: var(--text-dark); }
+        #authOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f5f7; z-index: 2000; display: flex; justify-content: center; align-items: center; }
+        .auth-card { background: white; padding: 40px; border-radius: 2px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px; border-top: 5px solid var(--word-blue); }
+        .auth-card h2 { color: var(--word-blue); margin: 0 0 20px 0; text-align: center; }
+        .auth-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); outline: none; }
+        
+        /* 新增：记住密码布局样式 */
+        .auth-options { display: flex; align-items: center; margin-bottom: 15px; font-size: 13px; color: var(--text-light); cursor: pointer; }
+        .auth-options input { margin-right: 8px; cursor: pointer; }
+
+        .auth-btn { width: 100%; padding: 10px; background: var(--word-blue); color: white; border: none; cursor: pointer; font-weight: bold; }
+        .auth-btn:hover { background: #1e3e6d; }
+        .auth-toggle { margin-top: 15px; text-align: center; font-size: 13px; color: var(--text-light); cursor: pointer; text-decoration: underline; }
+
+        /* 侧边栏和主内容样式省略，保持与你提供的一致... */
+        .sidebar { width: 260px; background: #fff; border-right: 1px solid var(--border-color); padding: 15px 12px; flex-shrink: 0; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.02); z-index: 10; }
+        .user-status { padding: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .logout-btn { color: var(--danger-red); cursor: pointer; font-weight: bold; }
+        .search-container { margin-bottom: 15px; position: relative; }
+        .search-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 20px; font-size: 13px; outline: none; transition: 0.2s; background: #f9f9f9; }
+        .search-input:focus { border-color: var(--word-blue); background: #fff; box-shadow: 0 0 5px rgba(43,87,154,0.1); }
+        .btn-create-doc { background-color: var(--word-blue); color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 20px; width: 100%; transition: 0.2s; }
+        .btn-create-doc:hover { background-color: #1e3e6d; }
+        .section-header { font-size: 11px; color: #999; font-weight: bold; padding-left: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .add-cat-btn { cursor: pointer; font-size: 18px; color: var(--word-blue); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .cat-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+        .cat-item { padding: 10px 12px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; border-radius: 6px; align-items: center; margin-bottom: 4px; position: relative; }
+        .cat-item:hover { background: #f5f5f5; }
+        .cat-item.active { background: var(--active-bg); color: var(--word-blue); font-weight: bold; }
+        .cat-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 5px; }
+        .cat-count { background: #eee; font-size: 10px; padding: 2px 6px; border-radius: 10px; color: #666; font-weight: normal; margin-left: 5px; }
+        .del-cat-icon { display: none; color: #ccc; font-size: 14px; padding: 0 5px; transition: 0.2s; margin-left: 5px; }
+        .cat-item:hover .del-cat-icon { display: inline-block; }
+        .del-cat-icon:hover { color: var(--danger-red); transform: scale(1.2); }
+        .backup-tools { border-top: 1px solid #eee; padding-top: 15px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .btn-backup { background: #f5f5f5; border: 1px solid #ddd; padding: 6px; font-size: 12px; cursor: pointer; border-radius: 4px; color: #666; }
+        .btn-backup:hover { background: #eee; color: var(--word-blue); }
+        .main-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 0 0 60px 0; }
+        .toolbar { width: 850px; background: #fff; padding: 12px 25px; border: 1px solid var(--border-color); display: flex; gap: 12px; position: sticky; top: 0; z-index: 100; align-items: center; border-radius: 0 0 4px 4px; border-top: none; flex-wrap: wrap; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .format-btn { padding: 3px 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 3px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .format-btn:hover { background: #f0f0f0; border-color: var(--word-blue); }
+        .toolbar select { padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; outline: none; }
+        .color-picker-container { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-light); }
+        .color-picker-container input[type="color"] { width: 20px; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
+        .btn-delete { margin-left: auto; color: #999; border: 1px solid transparent; background: none; cursor: pointer; padding: 5px 10px; border-radius: 4px; font-size: 16px; transition: 0.3s; display: flex; align-items: center; gap: 4px; }
+        .btn-delete:hover { color: var(--danger-red); background-color: #fff1f0; border-color: #ffa39e; }
+        .paper { width: 850px; min-height: 1100px; height: auto; background: #fff; padding: 80px 90px; box-shadow: 0 0 15px rgba(0,0,0,0.05); border: 1px solid var(--border-color); position: relative; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; flex-shrink: 0; }
+        .list-header { font-size: 24px; color: var(--word-blue); border-bottom: 2px solid var(--word-blue); padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .post-entry { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .post-entry:hover { background: #fafafa; }
+        .post-title { color: #2b579a; font-weight: 500; flex: 1; padding-right: 15px; font-size: 15px; }
+        .post-meta { font-size: 12px; color: #aaa; white-space: nowrap; text-align: right; }
+        .article-title-input { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 20px; outline: none; width: 100%; border: none; min-height: 1.2em; }
+        .article-info-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 30px; color: #999; font-size: 13px; }
+        .article-content-input { line-height: 1.8; font-size: 16px; outline: none; min-height: 600px; width: 100%; }
+        .article-content-input img { max-width: 100% !important; height: auto !important; display: block; margin: 10px auto; cursor: zoom-in; transition: transform 0.2s; }
+        .image-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; cursor: zoom-out; }
+        .image-modal img { max-width: 90%; max-height: 90%; border-radius: 4px; }
+        .hidden { display: none !important; }
+        .save-indicator { font-size: 12px; color: #bbb; margin-left: 10px; transition: color 0.3s; }
+        .save-indicator.active { color: var(--word-blue); font-weight: bold; }
+        @media print { .sidebar, .toolbar, .save-indicator, #listView, .image-modal, #authOverlay { display: none !important; } body, .main-content { background: #fff; height: auto; overflow: visible; display: block; } .paper { box-shadow: none; border: none; width: 100%; padding: 0; margin: 0; min-height: auto; } }
+    </style>
+</head>
+<body>
+
+    <div id="authOverlay">
+        <div class="auth-card">
+            <h2 id="authTitle">Word 博客登录</h2>
+            <input type="text" id="username" class="auth-input" placeholder="用户名">
+            <input type="password" id="password" class="auth-input" placeholder="密码">
+            
+            <label class="auth-options">
+                <input type="checkbox" id="rememberMe"> 记住用户名和密码
+            </label>
+
+            <button class="auth-btn" onclick="UserManager.handleAuth()" id="authBtn">登录</button>
+            <div class="auth-toggle" onclick="UserManager.toggleMode()" id="authToggle">没有账号？点击注册</div>
+        </div>
+    </div>
+
+    <div id="imageModal" class="image-modal" onclick="App.closeImageModal()">
+        <img id="modalImg" src="">
+    </div>
+
+    <aside class="sidebar">
+        <div class="user-status">
+            <span>你好, <strong id="displayUser">用户</strong></span>
+            <span class="logout-btn" onclick="UserManager.logout()">[退出]</span>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="搜索博文标题..." oninput="App.handleSearch()">
+        </div>
+        <button class="btn-create-doc" onclick="App.createPost()">+ 新建博文文档</button>
+        <div class="section-header">分类目录 <span class="add-cat-btn" onclick="App.addCategory()">+</span></div>
+        <ul id="categoryList" class="cat-list"></ul>
+        <div class="backup-tools">
+            <div class="section-header">数据管理</div>
+            <button class="btn-backup" onclick="App.exportData()">📤 备份所有文章 (JSON)</button>
+            <button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 恢复备份文件</button>
+            <input type="file" id="importFile" class="hidden" accept=".json" onchange="App.importData(event)">
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainScroll">
+        <div id="topToolbar" class="toolbar hidden">
+            <button onclick="App.goHome()" class="format-btn">← 返回列表</button>
+            <button id="editBtn" onclick="App.toggleEdit()" class="format-btn">🖋 编辑内容</button>
+            <button onclick="App.exportToDoc()" class="format-btn" style="color: var(--word-blue)">📄 导出 Doc</button>
+            <button onclick="App.printPost()" class="format-btn" style="color: var(--danger-red)">🖨 打印文章</button>
+            <div id="editControls" class="hidden" style="display:flex; align-items:center; gap:8px; border-left:1px solid #ddd; padding-left:12px;">
+                <button class="format-btn" onclick="App.formatText('bold')" title="加粗">B</button>
+                <button class="format-btn" onclick="App.formatText('italic')" style="font-style: italic;" title="斜体">I</button>
+                <button class="format-btn" onclick="App.formatText('underline')" style="text-decoration: underline;" title="下划线">U</button>
+                <button class="format-btn" onclick="App.formatText('removeFormat')" title="清除格式" style="color:var(--danger-red)">Tx</button>
+                <select id="fontSizeSelect" onchange="App.formatText('fontSize', this.value)" title="字号">
+                    <option value="3">字号</option>
+                    <option value="1">最小</option><option value="2">较小</option><option value="3">正常</option><option value="4">较大</option><option value="5">大号</option><option value="6">超大</option><option value="7">极高</option>
+                </select>
+                <div class="color-picker-container" title="文字颜色"><span>A</span><input type="color" onchange="App.formatText('foreColor', this.value)"></div>
+                <div class="color-picker-container" title="背景颜色"><span style="background:#ffff00">H</span><input type="color" value="#ffff00" onchange="App.formatText('hiliteColor', this.value)"></div>
+                <div class="edit-tool-item"><select id="catSelect" onchange="App.triggerAutoSave()"></select></div>
+                <button onclick="App.saveManual()" style="background:var(--word-blue); color:white; border:none; padding:4px 10px; cursor:pointer; border-radius:3px;">💾 保存</button>
+            </div>
+            <span id="autoSaveMsg" class="save-indicator">就绪</span>
+            <button onclick="App.deletePost()" class="btn-delete" title="永久删除此文">🗑</button>
+        </div>
+        <div id="listView" class="paper">
+            <div class="list-header"><span id="currentCatTitle">全部博文</span><span id="catStats" style="font-size:13px; color:#999; font-weight:normal;"></span></div>
+            <div id="listBody"></div>
+        </div>
+        <div id="detailView" class="paper hidden">
+            <div id="titleField" class="article-title-input" oninput="App.triggerAutoSave()"></div>
+            <div class="article-info-bar"><div id="catTag"></div><div id="dateField"></div></div>
+            <div id="contentField" class="article-content-input" oninput="App.triggerAutoSave()"></div>
+        </div>
+    </main>
+
+    <script>
+        const UserManager = {
+            mode: 'login',
+            usersKey: 'word_blog_users_db',
+            sessionKey: 'word_blog_active_user',
+            rememberKey: 'word_blog_remembered', // 新增：保存密码的 Key
+
+            // 新增：自动填充保存的用户名密码
+            fillRemembered() {
+                const saved = JSON.parse(localStorage.getItem(this.rememberKey));
+                if (saved) {
+                    document.getElementById('username').value = saved.u || "";
+                    document.getElementById('password').value = saved.p || "";
+                    document.getElementById('rememberMe').checked = true;
+                }
+            },
+
+            toggleMode() {
+                this.mode = (this.mode === 'login' ? 'register' : 'login');
+                document.getElementById('authTitle').innerText = this.mode === 'login' ? 'Word 博客登录' : '新用户注册';
+                document.getElementById('authBtn').innerText = this.mode === 'login' ? '登录' : '注册并登录';
+                document.getElementById('authToggle').innerText = this.mode === 'login' ? '没有账号？点击注册' : '已有账号？点击登录';
+                // 注册模式下隐藏记住密码
+                document.querySelector('.auth-options').style.display = this.mode === 'login' ? 'flex' : 'none';
+            },
+
+            handleAuth() {
+                const user = document.getElementById('username').value.trim();
+                const pass = document.getElementById('password').value.trim();
+                const remember = document.getElementById('rememberMe').checked;
+
+                if(!user || !pass) return alert("请输入完整信息");
+                let users = JSON.parse(localStorage.getItem(this.usersKey)) || {};
+
+                if(this.mode === 'register') {
+                    if(users[user]) return alert("用户已存在");
+                    users[user] = pass;
+                    localStorage.setItem(this.usersKey, JSON.stringify(users));
+                    alert("注册成功，请登录");
+                    this.toggleMode();
+                } else {
+                    if(users[user] && users[user] === pass) {
+                        // 如果勾选了记住我，存入本地，否则清除
+                        if (remember) {
+                            localStorage.setItem(this.rememberKey, JSON.stringify({u: user, p: pass}));
+                        } else {
+                            localStorage.removeItem(this.rememberKey);
+                        }
+                        
+                        sessionStorage.setItem(this.sessionKey, user);
+                        location.reload();
+                    } else { alert("用户名或密码错误"); }
+                }
+            },
+            logout() { sessionStorage.removeItem(this.sessionKey); location.reload(); },
+            getActiveUser() { return sessionStorage.getItem(this.sessionKey); }
+        };
+
+        const App = {
+            currentUser: UserManager.getActiveUser(),
+            data: [],
+            cats: [],
+            state: { activeCat: "全部博文", viewingId: null, searchQuery: "", autoSaveTimer: null },
+
+            getMinuteTime(dateObj = new Date()) {
+                const date = dateObj.toLocaleDateString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '/');
+                const time = dateObj.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+                return `${date} ${time}`;
+            },
+
+            init() { 
+                if(!this.currentUser) {
+                    document.getElementById('authOverlay').classList.remove('hidden');
+                    // 初始化登录页时填充信息
+                    UserManager.fillRemembered();
+                    return;
+                }
+                document.getElementById('authOverlay').classList.add('hidden');
+                document.getElementById('displayUser').innerText = this.currentUser;
+                const dataKey = `word_blog_data_${this.currentUser}`;
+                const catKey = `word_blog_cats_${this.currentUser}`;
+                this.data = JSON.parse(localStorage.getItem(dataKey)) || [];
+                this.cats = JSON.parse(localStorage.getItem(catKey)) || ["技术笔记", "生活感悟", "工作周报"];
+                this.refreshUI(); 
+                document.getElementById('contentField').addEventListener('click', (e) => {
+                    const isEditing = document.getElementById('titleField').contentEditable === "true";
+                    if (!isEditing && e.target.tagName === 'IMG') this.showImageModal(e.target.src);
+                });
+            },
+
+            saveToDisk() {
+                if(!this.currentUser) return;
+                localStorage.setItem(`word_blog_data_${this.currentUser}`, JSON.stringify(this.data));
+                localStorage.setItem(`word_blog_cats_${this.currentUser}`, JSON.stringify(this.cats));
+            },
+
+            // 以下功能函数保持不变...
+            showImageModal(src) { const img = document.getElementById('modalImg'); img.src = src; document.getElementById('imageModal').style.display = 'flex'; },
+            closeImageModal() { document.getElementById('imageModal').style.display = 'none'; },
+            triggerAutoSave() {
+                const msg = document.getElementById('autoSaveMsg');
+                if (msg) { msg.innerText = "正在输入..."; msg.classList.add('active'); }
+                if (this.state.autoSaveTimer) clearTimeout(this.state.autoSaveTimer);
+                this.state.autoSaveTimer = setTimeout(() => {
+                    this.saveCore();
+                    if (msg) {
+                        const now = new Date();
+                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                        msg.innerText = "已自动保存 " + timeStr;
+                        msg.classList.remove('active');
+                    }
+                }, 800);
+            },
+            saveCore() {
+                if (!this.state.viewingId) return;
+                const p = this.data.find(x => x.id === this.state.viewingId);
+                if (!p) return;
+                p.title = document.getElementById('titleField').innerText;
+                p.content = document.getElementById('contentField').innerHTML;
+                const catSel = document.getElementById('catSelect');
+                if (catSel && catSel.value) p.cat = catSel.value;
+                this.saveToDisk();
+                this.refreshSidebar();
+            },
+            printPost() { if(document.getElementById('titleField').contentEditable === "true") this.saveManual(); window.print(); },
+            exportToDoc() {
+                const title = document.getElementById('titleField').innerText;
+                const content = document.getElementById('contentField').innerHTML;
+                const html = `<html><head><meta charset='utf-8'></head><body><h1 style='text-align:center'>${title}</h1>${content}</body></html>`;
+                const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = `${title}.doc`; a.click();
+            },
+            formatText(cmd, val = null) { document.execCommand(cmd, false, val); this.triggerAutoSave(); },
+            exportData() {
+                const blob = new Blob([JSON.stringify({ data: this.data, cats: this.cats }, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = `${this.currentUser}_blog_backup.json`; a.click();
+            },
+            importData(event) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const imported = JSON.parse(e.target.result);
+                    this.data = imported.data; this.cats = imported.cats;
+                    this.saveToDisk(); this.refreshUI(); alert("恢复成功");
+                };
+                reader.readAsText(event.target.files[0]);
+            },
+            handleSearch() { this.state.searchQuery = document.getElementById('searchInput').value.trim().toLowerCase(); this.refreshUI(); },
+            refreshSidebar() {
+                const list = document.getElementById('categoryList');
+                list.innerHTML = '';
+                list.appendChild(this.createCatNode("全部博文", this.data.length, true));
+                this.cats.forEach(c => {
+                    const count = this.data.filter(p => p.cat === c).length;
+                    list.appendChild(this.createCatNode(c, count, false));
+                });
+            },
+            createCatNode(name, count, isStatic) {
+                const li = document.createElement('li');
+                li.className = `cat-item ${this.state.activeCat === name ? 'active' : ''}`;
+                li.onclick = (e) => { if(e.target.classList.contains('del-cat-icon')) return; this.state.activeCat = name; this.goHome(); };
+                const delBtn = isStatic ? '' : `<span class="del-cat-icon" title="删除分类" onclick="App.deleteCategory('${name}')">✕</span>`;
+                li.innerHTML = `<div style="display:flex; align-items:center; flex:1; overflow:hidden;"><span>${isStatic ? '📄' : '📁'}</span><span class="cat-name">${name}</span></div><div style="display:flex; align-items:center;"><span class="cat-count">${count}</span>${delBtn}</div>`;
+                return li;
+            },
+            deleteCategory(catName) {
+                if(confirm(`确定要删除分类“${catName}”吗？`)) {
+                    this.cats = this.cats.filter(c => c !== catName);
+                    const defaultCat = this.cats[0] || "未分类";
+                    if(!this.cats.includes(defaultCat)) this.cats.unshift(defaultCat);
+                    this.data.forEach(p => { if(p.cat === catName) p.cat = defaultCat; });
+                    if(this.state.activeCat === catName) this.state.activeCat = "全部博文";
+                    this.saveToDisk(); this.refreshUI();
+                }
+            },
+            refreshUI() {
+                this.refreshSidebar();
+                const filtered = this.data.filter(p => (this.state.activeCat === "全部博文" || p.cat === this.state.activeCat) && p.title.toLowerCase().includes(this.state.searchQuery));
+                document.getElementById('listBody').innerHTML = filtered.map(p => `<div class="post-entry" onclick="App.viewPost(${p.id})"><span class="post-title">${p.title}</span><div class="post-meta">[${p.cat}] ${p.date}</div></div>`).join('') || '<div style="padding:100px; text-align:center; color:#ccc;">暂无博文</div>';
+                document.getElementById('currentCatTitle').innerText = this.state.activeCat;
+                document.getElementById('catStats').innerText = `共 ${filtered.length} 篇`;
+            },
+            viewPost(id) {
+                this.state.viewingId = id; const p = this.data.find(x => x.id === id);
+                document.getElementById('listView').classList.add('hidden');
+                document.getElementById('detailView').classList.remove('hidden');
+                document.getElementById('topToolbar').classList.remove('hidden');
+                document.getElementById('titleField').innerText = p.title;
+                document.getElementById('contentField').innerHTML = p.content;
+                document.getElementById('dateField').innerText = "时间：" + p.date;
+                document.getElementById('catTag').innerText = "分类：" + p.cat;
+                document.getElementById('catSelect').innerHTML = this.cats.map(c => `<option value="${c}" ${c === p.cat ? 'selected' : ''}>${c}</option>`).join('');
+                document.getElementById('mainScroll').scrollTop = 0;
+            },
+            toggleEdit() {
+                const isEd = document.getElementById('titleField').contentEditable === "true";
+                ['titleField', 'contentField'].forEach(f => document.getElementById(f).contentEditable = !isEd);
+                document.getElementById('editControls').classList.toggle('hidden');
+                document.getElementById('editBtn').innerText = !isEd ? "退出编辑" : "🖋 编辑内容";
+            },
+            saveManual() { this.saveCore(); this.toggleEdit(); this.refreshUI(); },
+            createPost() {
+                const n = { id: Date.now(), title: "未命名博文", content: "请在此输入内容...", cat: this.cats[0], date: this.getMinuteTime() };
+                this.data.unshift(n); this.saveToDisk(); this.refreshUI(); this.viewPost(n.id);
+            },
+            deletePost() { if(confirm("确定删除？")) { this.data = this.data.filter(p => p.id !== this.state.viewingId); this.saveToDisk(); this.goHome(); } },
+            goHome() {
+                document.getElementById('listView').classList.remove('hidden');
+                document.getElementById('detailView').classList.add('hidden');
+                document.getElementById('topToolbar').classList.add('hidden');
+                this.refreshUI();
+            },
+            addCategory() {
+                const n = prompt("分类名：");
+                if (n && n.trim()) { 
+                    const trimmed = n.trim();
+                    if(!this.cats.includes(trimmed)) { this.cats.push(trimmed); this.saveToDisk(); this.refreshUI(); }
+                }
+            }
+        };
+
+        App.init();
+    </script>
+</body>
+</html>
